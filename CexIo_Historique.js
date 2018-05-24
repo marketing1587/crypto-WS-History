@@ -93,10 +93,8 @@ mongodb.MongoClient.connect('mongodb://ortal:Ortal1234@ds117540.mlab.com:17540/c
                 console.log("message",msg_received)
                 if (msg_received.indexOf("tick") != -1) 
                 {   
-                    msg_received = JSON.parse(msg_received);
-                    
-                    //console.log("msg_received " + msg_received.data.symbol1 + "_" + msg_received.data.symbol2 + " " + msg_received.data.price)    
-                                  
+                    msg_received = JSON.parse(msg_received);                    
+                    //console.log("msg_received " + msg_received.data.symbol1 + "_" + msg_received.data.symbol2 + " " + msg_received.data.price)                                      
                     var my_pair = msg_received.data.symbol1 + "_" + msg_received.data.symbol2
                     var mydate = getMyDate(new Date());
                     var myLow, myOpen, myHigh_5min, myLow_5min, myOpen_5min
