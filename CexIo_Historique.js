@@ -85,11 +85,52 @@ mongodb.MongoClient.connect('mongodb://ortal:Ortal1234@ds117540.mlab.com:17540/c
             var Keep_high, Keep_low, myHigh
 
             const w = new ws('wss://ws.cex.io/ws/')
-            w.on('open', () => w.send(msg_send))
+
+            // Pong response object that we will use to reply to Ping message from cex.io server
+            const pong = { e: 'pong' };
+
+            // Require crypto library
+            var crypto = require('crypto');
+  
+            // Utility function to create the signature for cex.io authentication
+            function createSignature(timestamp, apiKey, apiSecret) {
+                var hmac = crypto.createHmac('sha256', apiSecret);
+                hmac.update(timestamp + apiKey);
+                return hmac.digest('hex');
+            }
+
+            // utility function to create the auth 
+            function createAuthRequest(apiKey, apiSecret) {
+                var timestamp = Math.floor(Date.now() / 1000); // Note: java and javascript timestamp presented in miliseconds
+                var args = {
+                e: 'auth',
+                auth: {
+                    key: apiKey,
+                    signature: createSignature(timestamp, apiKey, apiSecret),
+                    timestamp: timestamp
+                }
+                };
+                var authMessage = JSON.stringify(args);
+                return authMessage;
+            }
+
+            const apiKey = '';
+            const apiSecret = '';
+            // prepare the auth message
+            const auth = createAuthRequest(apiKey, apiSecret);
+
+            w.on('open', () => {
+                w.send(msg_send);
+                w.send(auth);
+            });
             w.on('error', function(e){
                 console.log("error**",e);
             });
             w.on('message', (msg_received) => {
+                msgObject = JSON.parse(msg_received);
+                if (msgObject.hasOwnProperty('e') && msgObject.e == 'ping') {
+                    w.send(JSON.stringify(pong));
+                }
                 console.log("message",msg_received)
                 if (msg_received.indexOf("tick") != -1) 
                 {   
