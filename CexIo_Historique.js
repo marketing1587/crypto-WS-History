@@ -84,8 +84,6 @@ mongodb.MongoClient.connect('mongodb://ortal:Ortal1234@ds117540.mlab.com:17540/c
             var Keeping = new Object();
             var Keep_high, Keep_low, myHigh
 
-            const w = new ws('wss://ws.cex.io/ws/')
-
             // Pong response object that we will use to reply to Ping message from cex.io server
             const pong = { e: 'pong' };
 
@@ -116,80 +114,93 @@ mongodb.MongoClient.connect('mongodb://ortal:Ortal1234@ds117540.mlab.com:17540/c
 
             const apiKey = '';
             const apiSecret = '';
-            // prepare the auth message
-            const auth = createAuthRequest(apiKey, apiSecret);
 
-            w.on('open', () => {
-                w.send(msg_send);
-                w.send(auth);
-            });
-            w.on('error', function(e){
-                console.log("error**",e);
-            });
-            w.on('message', (msg_received) => {
-                msgObject = JSON.parse(msg_received);
-                if (msgObject.hasOwnProperty('e') && msgObject.e == 'ping') {
-                    w.send(JSON.stringify(pong));
-                }
-                console.log("message",msg_received)
-                if (msg_received.indexOf("tick") != -1) 
-                {   
-                    msg_received = JSON.parse(msg_received);                    
-                    //console.log("msg_received " + msg_received.data.symbol1 + "_" + msg_received.data.symbol2 + " " + msg_received.data.price)                                      
-                    var my_pair = msg_received.data.symbol1 + "_" + msg_received.data.symbol2
-                    var mydate = getMyDate(new Date());
-                    var myLow, myOpen, myHigh_5min, myLow_5min, myOpen_5min
-                    //console.log("myobjet[my_pair]",myobjet[my_pair])
-                    if(myobjet[my_pair] != undefined)
+            const connect = function() {
+                let w = new ws('wss://ws.cex.io/ws/');
+                // prepare the auth message. We must do this inside connect so we get a fresh token
+                let auth = createAuthRequest(apiKey, apiSecret);
+
+                // If connection is closed call connect() again to rebuild the socket connection
+                w.on('close', function(e) {
+                    console.log('CLOSED...', e);
+                    connect();
+                });
+
+                w.on('open', () => {
+                    w.send(msg_send);
+                    w.send(auth);
+                });
+                w.on('error', function(e){
+                    console.log("error**",e);
+                });
+                w.on('message', (msg_received) => {
+                    msgObject = JSON.parse(msg_received);
+                    if (msgObject.hasOwnProperty('e') && msgObject.e == 'ping') {
+                        w.send(JSON.stringify(pong));
+                    }
+                    console.log("message",msg_received)
+                    if (msg_received.indexOf("tick") != -1) 
                     {   
-                        if(myobjet[my_pair].high < msg_received.data.price) {
-                        myHigh = msg_received.data.price
-                        //console.log("**Second** high",myHigh) 
-                        }
-                        else { 
-                        myHigh = myobjet[my_pair].high
-                        //console.log("**Second** high",myHigh)
-                        }
-
-                        if(myobjet[my_pair].low > msg_received.data.price)  
-                        {myLow = msg_received.data.price
-                        //console.log("**Second** low",myLow)
-                        }
-                        else { myLow = myobjet[my_pair].low
+                        msg_received = JSON.parse(msg_received);                    
+                        //console.log("msg_received " + msg_received.data.symbol1 + "_" + msg_received.data.symbol2 + " " + msg_received.data.price)                                      
+                        var my_pair = msg_received.data.symbol1 + "_" + msg_received.data.symbol2
+                        var mydate = getMyDate(new Date());
+                        var myLow, myOpen, myHigh_5min, myLow_5min, myOpen_5min
+                        //console.log("myobjet[my_pair]",myobjet[my_pair])
+                        if(myobjet[my_pair] != undefined)
+                        {   
+                            if(myobjet[my_pair].high < msg_received.data.price) {
+                            myHigh = msg_received.data.price
+                            //console.log("**Second** high",myHigh) 
+                            }
+                            else { 
+                            myHigh = myobjet[my_pair].high
+                            //console.log("**Second** high",myHigh)
+                            }
+    
+                            if(myobjet[my_pair].low > msg_received.data.price)  
+                            {myLow = msg_received.data.price
                             //console.log("**Second** low",myLow)
+                            }
+                            else { myLow = myobjet[my_pair].low
+                                //console.log("**Second** low",myLow)
+                            }
+    
+                            myOpen = myobjet[my_pair].open
+                            myobjet[my_pair] = {exchange: "CEX", price: msg_received.data.price, high: myHigh , low: myLow , open: myOpen, close: msg_received.data.price, open24: msg_received.data.open24, 
+                            volume: msg_received.data.volume, date: mydate}
                         }
-
-                        myOpen = myobjet[my_pair].open
-                        myobjet[my_pair] = {exchange: "CEX", price: msg_received.data.price, high: myHigh , low: myLow , open: myOpen, close: msg_received.data.price, open24: msg_received.data.open24, 
-                        volume: msg_received.data.volume, date: mydate}
+                        else
+                        {   //console.log("object out")
+                            myobjet[my_pair] = {exchange: "CEX", price: msg_received.data.price, high: msg_received.data.price , low: msg_received.data.price , open: msg_received.data.price, close: msg_received.data.price,
+                            open24: msg_received.data.open24, volume: msg_received.data.volume, date: mydate}
+                        }
+    
+                        // if(myobjet_5min[my_pair] != undefined)
+                        // {   console.log("object in")
+                        //     if(myobjet_5min[my_pair].high < msg_received.data.price) {myHigh_5min = msg_received.data.price}
+                        //     else { myHigh_5min = myobjet_5min[my_pair].high}
+    
+                        //     if(myobjet_5min[my_pair].low > msg_received.data.price)  {myLow_5min = msg_received.data.price}
+                        //     else { myLow_5min = myobjet_5min[my_pair].low}
+    
+                        //     myOpen_5min = myobjet_5min[my_pair].open
+                        //     myobjet_5min[my_pair] = {exchange: "CEX", price: msg_received.data.price, high: myHigh_5min , low: myLow_5min , open: myOpen_5min, close: msg_received.data.price, open24: msg_received.data.open24, 
+                        //     volume: msg_received.data.volume, date: mydate}
+                        // }
+                        // else
+                        // {   console.log("object out")
+                        //     myobjet_5min[my_pair] = {exchange: "CEX", price: msg_received.data.price, high: msg_received.data.price , low: msg_received.data.price , open: msg_received.data.price, close: msg_received.data.price,
+                        //     open24: msg_received.data.open24, volume: msg_received.data.volume, date: mydate}
+                        // }
+                        //console.log("myobjet",myobjet)
+                        //console.log("myobjet _5min",myobjet_5min)
                     }
-                    else
-                    {   //console.log("object out")
-                        myobjet[my_pair] = {exchange: "CEX", price: msg_received.data.price, high: msg_received.data.price , low: msg_received.data.price , open: msg_received.data.price, close: msg_received.data.price,
-                        open24: msg_received.data.open24, volume: msg_received.data.volume, date: mydate}
-                    }
+                });
+            }
 
-                    // if(myobjet_5min[my_pair] != undefined)
-                    // {   console.log("object in")
-                    //     if(myobjet_5min[my_pair].high < msg_received.data.price) {myHigh_5min = msg_received.data.price}
-                    //     else { myHigh_5min = myobjet_5min[my_pair].high}
-
-                    //     if(myobjet_5min[my_pair].low > msg_received.data.price)  {myLow_5min = msg_received.data.price}
-                    //     else { myLow_5min = myobjet_5min[my_pair].low}
-
-                    //     myOpen_5min = myobjet_5min[my_pair].open
-                    //     myobjet_5min[my_pair] = {exchange: "CEX", price: msg_received.data.price, high: myHigh_5min , low: myLow_5min , open: myOpen_5min, close: msg_received.data.price, open24: msg_received.data.open24, 
-                    //     volume: msg_received.data.volume, date: mydate}
-                    // }
-                    // else
-                    // {   console.log("object out")
-                    //     myobjet_5min[my_pair] = {exchange: "CEX", price: msg_received.data.price, high: msg_received.data.price , low: msg_received.data.price , open: msg_received.data.price, close: msg_received.data.price,
-                    //     open24: msg_received.data.open24, volume: msg_received.data.volume, date: mydate}
-                    // }
-                    //console.log("myobjet",myobjet)
-                    //console.log("myobjet _5min",myobjet_5min)
-                }
-            })
+            // Call connect() to setup the socket for the first time
+            connect();
 
             //1 min
             var i = 0;
