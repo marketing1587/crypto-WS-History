@@ -202,9 +202,31 @@ mongodb.MongoClient.connect('mongodb://ortal:Ortal1234@ds117540.mlab.com:17540/c
             // Call connect() to setup the socket for the first time
             connect();
 
+            var start = new Date()
+            var runs = 0;
+
+            function customInterval(callback, interval) {
+                // Keep track of current timestamp
+                var current = new Date();
+                // Call passed function
+                callback();
+                // Keep track of current timestamp after callback() is finished
+                var currentDone = new Date();
+
+                // Increment run count. We need this to calculate timeOutInterval based on start time.
+                runs++;
+                // Calculate next Timeout interval
+                var nextTimeOut = (runs*interval) - (currentDone - start);
+
+                // Set timeout to call this function again
+                setTimeout(function(){
+                    customInterval(callback, interval);
+                }, nextTimeOut);
+            }
+
             //1 min
             var i = 0;
-            setInterval(function () {
+            customInterval(function () {
                for (property in myobjet) {
                 var date_now = new Date();
                 var my_historique_date = getMyDate(date_now);
